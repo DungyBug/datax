@@ -1,0 +1,6 @@
+def delta_difference(
+    values: list[int], chunk_size: int = 1000) -> tuple[list[int], list[int]]: ...
+
+
+def linear_difference(
+    values: list[int], chunk_size: int = 1000) -> tuple[list[int], list[int]]: ...
