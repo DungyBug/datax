@@ -11,7 +11,9 @@ df = df.groupby("timestamp")["value"].sum().reset_index()
 
 detector = IsolationForestBasedAnomalyDetector()
 
-print(detector)
+analyze = detector.analyze_dataset(df)
+
+print(analyze)
 #       timestamp  value  detections
 # 3864     465036    111           1
 # 3865     465037    101           1
