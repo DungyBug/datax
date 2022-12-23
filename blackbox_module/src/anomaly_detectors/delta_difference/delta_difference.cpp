@@ -1,24 +1,19 @@
 #include <iostream>
 #include <vector>
 #include <set>
-#include "linear_difference.h"
+#include "delta_difference.h"
 #include "../../utils.h"
 using namespace std;
 
-double predict(double prev, double current)
-{
-    return (current - prev) * 2 + prev;
-}
-
-double *get_prediction_deltas(double *array, unsigned long long size)
+double *get_deltas(double *array, unsigned long long size)
 {
     double *deltas = new double[size];
 
     deltas[0] = array[0];
 
-    for (unsigned long long i = 2; i < size; i++)
+    for (unsigned long long i = 1; i < size; i++)
     {
-        deltas[i] = abs(array[i] - predict(array[i - 2], array[i - 1]));
+        deltas[i] = abs(array[i] - array[i - 1]);
     }
 
     return deltas;
@@ -26,14 +21,15 @@ double *get_prediction_deltas(double *array, unsigned long long size)
 
 extern "C"
 {
-    PyObject *anomaly_detector_linear_difference(PyObject *self, PyObject *args)
+    PyObject *anomaly_detector_delta_difference(PyObject *self, PyObject *args)
     {
         unsigned long long chunkSize = 1000;
+        unsigned long long percentile = 90;
         PyObject *valuesList;
 
-        if (!PyArg_ParseTuple(args, "O|K", &valuesList, &chunkSize))
+        if (!PyArg_ParseTuple(args, "O|KK", &valuesList, &chunkSize, &percentile))
         {
-            PyErr_SetString(PyExc_TypeError, "blackbox.linear_difference(values: list[float|int], chunk_size: int = 1000): Expected one list of floats or ints.");
+            PyErr_SetString(PyExc_TypeError, "blackbox.delta_difference(values: list[float|int], chunk_size: int = 1000): Expected one list of floats or ints.");
             return NULL;
         }
 
@@ -45,7 +41,7 @@ extern "C"
             PyTypeObject *type = (PyTypeObject *)PyObject_Type(valuesList);
             char errorMessageBuffer[1024];
 
-            sprintf(errorMessageBuffer, "blackbox.linear_difference(values: list[float|int], chunk_size: int = 1000): Expected \"list\" or \"tuple\" in \"values\", but got \"%s\".", type->tp_name);
+            sprintf(errorMessageBuffer, "blackbox.delta_difference(values: list[float|int], chunk_size: int = 1000): Expected \"list\" or \"tuple\" in \"values\", but got \"%s\".", type->tp_name);
 
             PyErr_SetString(PyExc_TypeError, errorMessageBuffer);
             return NULL;
@@ -72,6 +68,10 @@ extern "C"
             {
                 values[i] = PyFloat_AS_DOUBLE(item);
             }
+            else if (PyNumber_Check(item))
+            {
+                values[i] = PyFloat_AS_DOUBLE(PyNumber_Float(item));
+            }
             else
             {
                 delete[] values;
@@ -79,7 +79,7 @@ extern "C"
                 PyTypeObject *type = (PyTypeObject *)PyObject_Type(item);
                 char errorMessageBuffer[1024];
 
-                sprintf(errorMessageBuffer, "blackbox.linear_difference(values: list[float|int], chunk_size: int = 1000): Expected \"float\" or \"int\" in \"values[%lli]\", but got \"%s\".", i, type->tp_name);
+                sprintf(errorMessageBuffer, "blackbox.delta_difference(values: list[float|int], chunk_size: int = 1000): Expected \"float\" or \"int\" in \"values[%lli]\", but got \"%s\".", i, type->tp_name);
 
                 PyErr_SetString(PyExc_TypeError, errorMessageBuffer);
                 return NULL;
@@ -89,7 +89,7 @@ extern "C"
         // ********************************************
         // * Find anomalies
         // ********************************************
-        double *deltas = get_prediction_deltas(values, size);
+        double *deltas = get_deltas(values, size);
 
         set<unsigned long long> criticalAnomalies;
         set<unsigned long long> minorAnomalies;
@@ -106,7 +106,7 @@ extern "C"
 
             sort(chunk, &chunk[chunkSize]);
 
-            double threeshold = PERCENTILE(chunk, chunkSize, 90);
+            double threeshold = PERCENTILE(chunk, chunkSize, percentile);
 
             for (unsigned long long j = 0; j < chunkSize; j++)
             {
