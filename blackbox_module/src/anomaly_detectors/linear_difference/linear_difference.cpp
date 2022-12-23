@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <set>
+#include <algorithm>
 #include "linear_difference.h"
 #include "../../utils.h"
 using namespace std;

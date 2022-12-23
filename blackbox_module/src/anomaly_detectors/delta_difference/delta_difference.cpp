@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <algorithm>
 #include <set>
 #include "delta_difference.h"
 #include "../../utils.h"
